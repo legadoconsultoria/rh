@@ -21,7 +21,8 @@ CARDAPIO = {
     "Marmita": 20.00,
     "Marmita Pequena": 15.00,
     "Refrigerante 2L": 12.00,
-    "Refrigerante 600ml": 7.00
+    "Refrigerante 600ml": 8.00,
+    "Refrigerante lata": 7.00
 }
 
 # --- FUNÇÕES DO BANCO DE DADOS ---
