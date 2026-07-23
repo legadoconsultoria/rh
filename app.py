@@ -92,22 +92,36 @@ def gerar_pdf(df, data_str):
     # --- Conteúdo da tabela ---
     pdf.set_font("helvetica", "", 10)
     
-    # Configurações de largura e altura base
     col_widths = [20, 45, 65, 60]
     line_height = 5
     
+    # --- FUNÇÃO AUXILIAR PARA CONTAR LINHAS EXATAS ---
+    def calcular_linhas(pdf_obj, texto, largura_coluna):
+        if not texto: 
+            return 1
+        palavras = str(texto).split()
+        linhas = 1
+        linha_atual = ""
+        for palavra in palavras:
+            teste_linha = linha_atual + " " + palavra if linha_atual else palavra
+            # Se a linha testada for maior que a coluna (descontando 2mm de margem interna)
+            if pdf_obj.get_string_width(teste_linha) > (largura_coluna - 2):
+                linhas += 1 # Pula para a próxima linha
+                linha_atual = palavra # A palavra atual vai para a nova linha
+            else:
+                linha_atual = teste_linha
+        return max(1, linhas)
+
     for _, row in df.iterrows():
         hora = str(row['Hora'])
-        # Removido os cortes ([:22], [:35]...) para capturar o texto inteiro
         colab = remover_acentos(row['Colaborador'])
         pedido = remover_acentos(row['Pedido'])
         obs = remover_acentos(row['Observações'])
         
-        # Calcula quantas linhas cada texto vai ocupar na sua respectiva coluna
-        # Subtrai 2 da largura para considerar as margens internas da célula
-        linhas_colab = max(1, int(pdf.get_string_width(colab) / (col_widths[1] - 2)) + 1)
-        linhas_pedido = max(1, int(pdf.get_string_width(pedido) / (col_widths[2] - 2)) + 1)
-        linhas_obs = max(1, int(pdf.get_string_width(obs) / (col_widths[3] - 2)) + 1)
+        # Agora usamos a nova função para simular a quebra de texto exata do PDF
+        linhas_colab = calcular_linhas(pdf, colab, col_widths[1])
+        linhas_pedido = calcular_linhas(pdf, pedido, col_widths[2])
+        linhas_obs = calcular_linhas(pdf, obs, col_widths[3])
         
         # A altura da linha será baseada na célula que precisar de mais quebras de linha
         max_linhas = max(linhas_colab, linhas_pedido, linhas_obs)
@@ -121,9 +135,9 @@ def gerar_pdf(df, data_str):
         y_start = pdf.get_y()
         
         # Desenha Coluna 1 (Hora)
-        pdf.rect(x_start, y_start, col_widths[0], altura_linha) # Desenha a borda
-        pdf.set_xy(x_start, y_start)                           # Posiciona o cursor
-        pdf.multi_cell(col_widths[0], line_height, hora, align="C") # Insere o texto
+        pdf.rect(x_start, y_start, col_widths[0], altura_linha) 
+        pdf.set_xy(x_start, y_start)                           
+        pdf.multi_cell(col_widths[0], line_height, hora, align="C") 
         
         # Desenha Coluna 2 (Colaborador)
         x_atual = x_start + col_widths[0]
@@ -143,10 +157,11 @@ def gerar_pdf(df, data_str):
         pdf.set_xy(x_atual, y_start)
         pdf.multi_cell(col_widths[3], line_height, obs)
         
-        # Ao final do loop da linha atual, reposiciona o cursor Y para iniciar a próxima linha
+        # Reposiciona o cursor Y para iniciar a próxima linha
         pdf.set_xy(x_start, y_start + altura_linha)
 
-    return bytes(pdf.output())# Carrega a lista de usuários no início da aplicação
+    return bytes(pdf.output())
+    
 lista_usuarios = carregar_usuarios()
 
 # --- INTERFACE DO STREAMLIT ---
