@@ -81,6 +81,7 @@ def gerar_pdf(df, data_str):
     pdf.cell(0, 10, f"Relatorio de Pedidos - {data_str}", ln=True, align="C")
     pdf.ln(10)
 
+    # --- Cabeçalho da tabela ---
     pdf.set_font("helvetica", "B", 11)
     pdf.cell(20, 10, "Hora", border=1, align="C")
     pdf.cell(45, 10, "Colaborador", border=1, align="C")
@@ -88,23 +89,64 @@ def gerar_pdf(df, data_str):
     pdf.cell(60, 10, "Observacoes", border=1, align="C")
     pdf.ln()
 
+    # --- Conteúdo da tabela ---
     pdf.set_font("helvetica", "", 10)
+    
+    # Configurações de largura e altura base
+    col_widths = [20, 45, 65, 60]
+    line_height = 5
+    
     for _, row in df.iterrows():
         hora = str(row['Hora'])
-        colab = remover_acentos(row['Colaborador'])[:22]
-        pedido = remover_acentos(row['Pedido'])[:35]
-        obs = remover_acentos(row['Observações'])[:32]
+        # Removido os cortes ([:22], [:35]...) para capturar o texto inteiro
+        colab = remover_acentos(row['Colaborador'])
+        pedido = remover_acentos(row['Pedido'])
+        obs = remover_acentos(row['Observações'])
         
-        pdf.cell(20, 10, hora, border=1, align="C")
-        pdf.cell(45, 10, colab, border=1)
-        pdf.cell(65, 10, pedido, border=1)
-        pdf.cell(60, 10, obs, border=1)
-        pdf.ln()
+        # Calcula quantas linhas cada texto vai ocupar na sua respectiva coluna
+        # Subtrai 2 da largura para considerar as margens internas da célula
+        linhas_colab = max(1, int(pdf.get_string_width(colab) / (col_widths[1] - 2)) + 1)
+        linhas_pedido = max(1, int(pdf.get_string_width(pedido) / (col_widths[2] - 2)) + 1)
+        linhas_obs = max(1, int(pdf.get_string_width(obs) / (col_widths[3] - 2)) + 1)
+        
+        # A altura da linha será baseada na célula que precisar de mais quebras de linha
+        max_linhas = max(linhas_colab, linhas_pedido, linhas_obs)
+        altura_linha = max_linhas * line_height
+        
+        # Checa se a próxima linha ultrapassa o limite da página, criando uma nova se necessário
+        if pdf.get_y() + altura_linha > 275:
+            pdf.add_page()
+            
+        x_start = pdf.get_x()
+        y_start = pdf.get_y()
+        
+        # Desenha Coluna 1 (Hora)
+        pdf.rect(x_start, y_start, col_widths[0], altura_linha) # Desenha a borda
+        pdf.set_xy(x_start, y_start)                           # Posiciona o cursor
+        pdf.multi_cell(col_widths[0], line_height, hora, align="C") # Insere o texto
+        
+        # Desenha Coluna 2 (Colaborador)
+        x_atual = x_start + col_widths[0]
+        pdf.rect(x_atual, y_start, col_widths[1], altura_linha)
+        pdf.set_xy(x_atual, y_start)
+        pdf.multi_cell(col_widths[1], line_height, colab)
+        
+        # Desenha Coluna 3 (Pedido)
+        x_atual += col_widths[1]
+        pdf.rect(x_atual, y_start, col_widths[2], altura_linha)
+        pdf.set_xy(x_atual, y_start)
+        pdf.multi_cell(col_widths[2], line_height, pedido)
+        
+        # Desenha Coluna 4 (Observações)
+        x_atual += col_widths[2]
+        pdf.rect(x_atual, y_start, col_widths[3], altura_linha)
+        pdf.set_xy(x_atual, y_start)
+        pdf.multi_cell(col_widths[3], line_height, obs)
+        
+        # Ao final do loop da linha atual, reposiciona o cursor Y para iniciar a próxima linha
+        pdf.set_xy(x_start, y_start + altura_linha)
 
-    return bytes(pdf.output())
-
-
-# Carrega a lista de usuários no início da aplicação
+    return bytes(pdf.output())# Carrega a lista de usuários no início da aplicação
 lista_usuarios = carregar_usuarios()
 
 # --- INTERFACE DO STREAMLIT ---
