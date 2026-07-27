@@ -218,12 +218,50 @@ with aba_restaurante:
         df_dia = df_pedidos[df_pedidos['Apenas_Data'] == data_escolhida].copy()
         
         if not df_dia.empty:
+            # Mantém a exibição da tabela original para o restaurante
             df_restaurante = df_dia[['Hora_Fomatada', 'nome', 'itens', 'observacao']]
             df_restaurante.columns = ['Hora', 'Colaborador', 'Pedido', 'Observações']
             st.dataframe(df_restaurante, use_container_width=True, hide_index=True)
             
+            # Botão de PDF
             pdf_bytes = gerar_pdf(df_restaurante, data_escolhida.strftime('%d/%m/%Y'))
-            st.download_button("📄 Baixar Relatório PDF", data=pdf_bytes, file_name=f"Relatorio_{data_escolhida.strftime('%d_%m_%Y')}.pdf", mime="application/pdf")
+            st.download_button(
+                "📄 Baixar Relatório PDF", 
+                data=pdf_bytes, 
+                file_name=f"Relatorio_{data_escolhida.strftime('%d_%m_%Y')}.pdf", 
+                mime="application/pdf"
+            )
+            
+            st.divider()
+            
+            # --- NOVA SESSÃO: APAGAR REGISTRO ---
+            st.subheader("🗑️ Apagar Registro do Dia")
+            
+            # Verifica se a coluna 'id' existe (padrão do Supabase) para não apagar o pedido errado
+            if 'id' in df_dia.columns:
+                # Cria um dicionário vinculando um texto amigável de exibição ao ID real do banco
+                opcoes_apagar = {}
+                for _, row in df_dia.iterrows():
+                    texto_exibicao = f"{row['Hora_Fomatada']} - {row['nome']} ({row['itens']})"
+                    opcoes_apagar[texto_exibicao] = row['id']
+                
+                pedido_selecionado = st.selectbox(
+                    "Selecione o pedido que deseja remover:", 
+                    [""] + list(opcoes_apagar.keys())
+                )
+                
+                if st.button("Apagar Pedido Selecionado"):
+                    if pedido_selecionado:
+                        id_para_apagar = opcoes_apagar[pedido_selecionado]
+                        # Deleta o registro no Supabase baseado no ID único
+                        supabase.table("pedidos").delete().eq("id", id_para_apagar).execute()
+                        st.success("Pedido apagado com sucesso! A página será atualizada.")
+                        st.rerun()
+                    else:
+                        st.warning("Por favor, selecione um pedido na lista para apagar.")
+            else:
+                st.error("A coluna 'id' não foi encontrada. Verifique a estrutura da sua tabela no Supabase.")
+                
         else:
             st.warning("Nenhum pedido foi feito neste dia.")
     else:
