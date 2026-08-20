@@ -294,7 +294,7 @@ with aba_fechamento:
         st.subheader(f"Total a cobrar - {mes_selecionado}")
         resumo = df_mes.groupby('nome')[['Total Funcionário', 'Total Hora Extra']].sum().reset_index()
         
-        # MUDANÇA: Criar cópia para o Excel com números para que as somas funcionem na planilha e renomear 'nome'
+        # Criar cópia para o Excel com números para que as somas funcionem na planilha e renomear 'nome'
         resumo_excel = resumo.copy()
         resumo_excel.rename(columns={'nome': 'Colaborador'}, inplace=True)
         
@@ -304,7 +304,7 @@ with aba_fechamento:
         resumo.rename(columns={'nome': 'Colaborador'}, inplace=True)
         st.table(resumo)
         
-        # MUDANÇA: Geração e download do Excel
+        # Geração e download do Excel
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             resumo_excel.to_excel(writer, index=False, sheet_name='Fechamento')
@@ -326,6 +326,23 @@ with aba_fechamento:
         if pessoa_selecionada != "Todos":
             df_auditoria = df_auditoria[df_auditoria['Nome'] == pessoa_selecionada]
         st.dataframe(df_auditoria, use_container_width=True, hide_index=True)
+        
+        # MUDANÇA: Geração e download do Excel para Auditoria
+        buffer_auditoria = io.BytesIO()
+        with pd.ExcelWriter(buffer_auditoria, engine='openpyxl') as writer:
+            df_auditoria.to_excel(writer, index=False, sheet_name='Auditoria')
+            
+        # Formata o nome do arquivo dependendo de quem foi selecionado
+        nome_pessoa = "Todos" if pessoa_selecionada == "Todos" else pessoa_selecionada.replace(" ", "_")
+        nome_arquivo_aud = f"Auditoria_{nome_pessoa}_{mes_selecionado.replace('/', '_')}.xlsx"
+        
+        st.download_button(
+            label="📥 Baixar Auditoria em Excel",
+            data=buffer_auditoria.getvalue(),
+            file_name=nome_arquivo_aud,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        
     else:
         st.info("Não há dados suficientes.")
 
