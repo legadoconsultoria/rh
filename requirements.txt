@@ -4,3 +4,4 @@ supabase
 pytz
 fpdf2
 starlette<1.4.0
+openpyxl
