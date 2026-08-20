@@ -6,6 +6,7 @@ import pytz
 from fpdf import FPDF
 import unicodedata
 import os
+import io
 
 # Configuração do banco de dados Supabase
 @st.cache_resource
@@ -41,7 +42,17 @@ def carregar_pedidos():
             
         df['Data_Hora'] = pd.to_datetime(df['created_at']).dt.tz_convert(FUSO_BR)
         df['Apenas_Data'] = df['Data_Hora'].dt.date
-        df['Mes_Ano'] = df['Data_Hora'].dt.strftime("%m/%Y")
+        
+        # MUDANÇA: Regra para pegar de dia 21 do mês passado a 20 do mês atual
+        def calcular_mes_competencia(data):
+            if data.day > 20:
+                if data.month == 12:
+                    return f"01/{data.year + 1}"
+                else:
+                    return f"{data.month + 1:02d}/{data.year}"
+            return data.strftime("%m/%Y")
+            
+        df['Mes_Ano'] = df['Data_Hora'].apply(calcular_mes_competencia)
         df['Hora_Fomatada'] = df['Data_Hora'].dt.strftime("%H:%M")
         return df
     return pd.DataFrame()
@@ -282,10 +293,28 @@ with aba_fechamento:
         
         st.subheader(f"Total a cobrar - {mes_selecionado}")
         resumo = df_mes.groupby('nome')[['Total Funcionário', 'Total Hora Extra']].sum().reset_index()
+        
+        # MUDANÇA: Criar cópia para o Excel com números para que as somas funcionem na planilha e renomear 'nome'
+        resumo_excel = resumo.copy()
+        resumo_excel.rename(columns={'nome': 'Colaborador'}, inplace=True)
+        
+        # Aplica a formatação em R$ apenas para o visual do sistema
         resumo['Total Funcionário'] = resumo['Total Funcionário'].apply(lambda x: f"R$ {x:.2f}")
         resumo['Total Hora Extra'] = resumo['Total Hora Extra'].apply(lambda x: f"R$ {x:.2f}")
         resumo.rename(columns={'nome': 'Colaborador'}, inplace=True)
         st.table(resumo)
+        
+        # MUDANÇA: Geração e download do Excel
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            resumo_excel.to_excel(writer, index=False, sheet_name='Fechamento')
+            
+        st.download_button(
+            label="📥 Baixar Tabela em Excel",
+            data=buffer.getvalue(),
+            file_name=f"Fechamento_{mes_selecionado.replace('/', '_')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
         
         st.divider()
         st.subheader("Auditoria por Colaborador")
