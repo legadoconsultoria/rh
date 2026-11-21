@@ -39,8 +39,23 @@ def carregar_usuarios():
 
 def carregar_pedidos():
     try:
-        response = supabase.table("pedidos").select("*").execute()
-        dados = response.data
+        dados = []
+        inicio = 0
+        tamanho_pagina = 1000
+
+        while True:
+            response = (
+                supabase.table("pedidos")
+                .select("*")
+                .order("id", desc=False)
+                .range(inicio, inicio + tamanho_pagina - 1)
+                .execute()
+            )
+            lote = response.data or []
+            dados.extend(lote)
+            if len(lote) < tamanho_pagina:
+                break
+            inicio += tamanho_pagina
     except Exception as e:
         st.error(f"Erro ao carregar pedidos: {e}")
         return pd.DataFrame()
