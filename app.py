@@ -223,8 +223,7 @@ with aba_restaurante:
     st.header("Envio para o Restaurante")
     st.divider()
     df_pedidos = carregar_pedidos()
-    st.write("Data escolhida no input:", data_escolhida, type(data_escolhida))
-    st.write("Últimos created_at e Apenas_Data:", df_pedidos[['created_at', 'Data_Hora', 'Apenas_Data']].tail(5))
+
     if not df_pedidos.empty:
         data_escolhida = st.date_input("Escolha o dia para gerar o relatório:", format="DD/MM/YYYY")
         df_dia = df_pedidos[df_pedidos['Apenas_Data'] == data_escolhida].copy()
